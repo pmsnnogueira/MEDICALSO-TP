@@ -19,9 +19,4 @@ typedef struct Cliente{
 }cliente;
 
 
-typedef struct{
-	int pid;
-	char sintomas[40], classificacao[40];
-} pedido;
-
 #endif //TP_SO_CLIENTE_H

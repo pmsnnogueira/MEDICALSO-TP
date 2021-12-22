@@ -3,11 +3,16 @@
 //
 #include "cliente.h"
 
+#define FIFO_SERV "canal"
+#define FIFO_CLI "cli%d"
+
+
 int main(int argc,char *argv[])
 {
     cliente a;
-    char sintoma[100];
-    int pid = getpid();
+    char sintoma[100], str[40];
+    int fd, n, fd_cli, n_cli;
+    pedido  p;
 
 
     if(argc < 2)
@@ -18,15 +23,35 @@ int main(int argc,char *argv[])
 
     strcpy(a.nome, argv[1]);
 
-    printf("\n[PID=%d]Bom dia %s",pid, a.nome);
+    p.pid = getpid();
 
-    printf("\nQuais sao os seus sistomas?\n");
-    fgets(sintoma, strlen(sintoma), stdin);
+    sprintf(str, FIFO_CLI, p.pid);
+    mkfifo(str, 0600);
 
-    strcpy(a.sintomas, sintoma);
+    if(access(FIFO_SERV, F_OK) != 0){
+        printf("\nO servidor está desligado...");
+        exit(1);
+    }
 
-    printf("\n%s", a.sintomas);
+    fd = open(FIFO_SERV, O_WRONLY);
 
+    printf("\n[PID=%d]Bem-Vindo, %s", p.pid, a.nome);
+    do{
+        printf("\nQuais sao os seus sistomas?\n");
+        fgets(p.sintomas, sizeof(p.sintomas), stdin);
+
+        write(fd, &p, sizeof(pedido));
+
+        fd_cli = open(str, O_RDONLY);
+        read(fd_cli, &p, sizeof(pedido));
+        close(fd_cli);
+        printf("\nO seu diagnostico e: %s", p.classificacao);
+    }while(strcmp(p.sintomas, "sair\n"));
+
+    strcpy(a.sintomas, p.sintomas);
+
+    close(fd_cli);
+    unlink(str);
 
     return 0;
 }

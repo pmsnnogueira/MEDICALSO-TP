@@ -4,8 +4,11 @@
 
 #include "balcao.h"
 
+#define FIFO_SERV "canal"
+#define FIFO_CLI "cli%d"
+
 int comandos(char *frase){
-	int tam = strlen(frase) -1;
+	int tam = strlen(frase)-1;
     const char comandos[7][25] = {
               "utentes",
               "especialistas",
@@ -20,7 +23,6 @@ int comandos(char *frase){
          if(strncmp(frase,comandos[0],tam) == 0)
          {
               printf("Comando Utentes\n");
-
               break;
          }
          if(strncmp(frase,comandos[1],tam) == 0)
@@ -50,7 +52,6 @@ int comandos(char *frase){
              printf("Comando encerra\n");
 
              return 2;
-             break;
          }
 
      }
@@ -61,9 +62,12 @@ int comandos(char *frase){
 
 int main(int argc, char* argv[], char* envp[]){
     int i, canal[2], retorno[2], res, res_fork, res_pipe, estado;
-    int var;
-    char str[100], str1[40];
+    int var, fd, n_fifo, fd_cli, res_com;
+    char str[100], str1[40], str_cli[40], str_com[40];
     balcao b;
+    struct timeval tempo;
+    pedido p;
+    fd_set fds;
 
     setbuf(stdout, NULL);
 
@@ -103,6 +107,19 @@ int main(int argc, char* argv[], char* envp[]){
     }
 
 
+    if(access(FIFO_SERV, F_OK) == 0){//verifica se já existe o FIFO, e encerra se já existir
+        printf("\nO FIFO ja existe...\n");
+        exit(1);
+    }
+
+    mkfifo(FIFO_SERV, 0600);//cria FIFO do servidor
+
+    fd = open(FIFO_SERV, O_RDWR);
+    if(fd < 0){
+        perror("\nimpossivel abrir o fifo");
+        exit(1);
+    }
+
     res_pipe = pipe(canal);
     if(res_pipe < 0){
         perror("\nerro pipe1: ");
@@ -136,21 +153,51 @@ int main(int argc, char* argv[], char* envp[]){
     //PAI
     close(canal[0]);
     close(retorno[1]);
-    while (1){
-        printf("\nSintomas: ");
-        fgets(str1, sizeof(str1) - 1, stdin);
-        write(canal[1], str1, strlen(str1));
-		if(comandos(str1) == 2)
-            break;
-        res = read(retorno[0], str, sizeof(str) - 1);
-        str[res] = '\0';
-        strcpy(b.a.sintomas, str);
-        printf("\nO diagnostico do cliente e: %s\n", b.a.sintomas);
-    }
 
-    wait(&estado);
-    close(canal[1]);
-    close(retorno[0]);
+    do{
+        printf("\nComando: ");
+
+        FD_ZERO(&fds);
+        FD_SET(0 , &fds);
+        FD_SET(fd, &fds);
+
+        tempo.tv_sec = 10;
+        tempo.tv_usec = 0;
+        res_com = select(fd+1, &fds, NULL, NULL, &tempo);
+        if(res_com == 0){
+            printf("\nSem input...");
+        } else if(res_com > 0){
+            if(FD_ISSET(0, &fds)){
+                fgets(str_com, sizeof(str_com), stdin);
+                if(comandos(str_com) == 2){
+                    printf("\nA terminar o programa...\n");
+                    //wait(&estado);
+                    //close(fd);
+                    //unlink(FIFO_SERV);
+                    //exit(1);
+                    break;
+                }
+            }
+            if(FD_ISSET(fd, &fds)){
+                n_fifo = read(fd, &p, sizeof(pedido));
+                if(n_fifo == sizeof(pedido)){
+                    write(canal[1], p.sintomas, strlen(p.sintomas));
+                    res = read(retorno[0], p.classificacao, sizeof(p.classificacao)-1);
+                    p.classificacao[res] = '\0';
+
+                    sprintf(str_cli, FIFO_CLI, p.pid);
+                    fd_cli = open(str_cli, O_WRONLY);
+                    write(fd_cli, &p, sizeof(pedido));
+                    close(fd_cli);
+                }
+            }
+        }
+    }while(1);
+
+    //wait(&estado);
+
+    close(fd);
+    unlink(FIFO_SERV);
 
     return 0;
 }
