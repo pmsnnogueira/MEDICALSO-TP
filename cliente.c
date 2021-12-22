@@ -1,10 +1,7 @@
 //
 // Created by rafael on 28/10/21.
 //
-#include <stdio.h>
 #include "cliente.h"
-#include <unistd.h>
-
 
 int main(int argc,char *argv[])
 {
@@ -19,14 +16,15 @@ int main(int argc,char *argv[])
         return 1;
     }
 
-    a.nome = argv[1];
+    strcpy(a.nome, argv[1]);
 
     printf("\n[PID=%d]Bom dia %s",pid, a.nome);
 
     printf("\nQuais sao os seus sistomas?\n");
-    fgets(sintoma, sizeof(sintoma), stdin);
+    fgets(sintoma, strlen(sintoma), stdin);
 
-    a.sintomas = sintoma;
+    strcpy(a.sintomas, sintoma);
+
     printf("\n%s", a.sintomas);
 
 

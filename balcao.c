@@ -2,12 +2,7 @@
 // Created by rafael on 28/10/21.
 //
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
 #include "balcao.h"
-#include <sys/wait.h>
 
 int comandos(char *frase){
 	int tam = strlen(frase) -1;

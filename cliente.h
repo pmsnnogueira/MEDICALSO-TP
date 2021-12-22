@@ -5,6 +5,7 @@
 #ifndef TP_SO_CLIENTE_H
 #define TP_SO_CLIENTE_H
 
+#include "biblio.h"
 
 typedef struct Cliente{
     int cliente;
@@ -16,5 +17,11 @@ typedef struct Cliente{
     int n_especilistas;
 
 }cliente;
+
+
+typedef struct{
+	int pid;
+	char sintomas[40], classificacao[40];
+} pedido;
 
 #endif //TP_SO_CLIENTE_H

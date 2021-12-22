@@ -4,7 +4,9 @@
 
 #ifndef TP_SO_BALCAO_H
 #define TP_SO_BALCAO_H
+
 #include "cliente.h"
+#include "biblio.h"
 
 typedef struct Balcao{
     cliente a;             // ASSIM PODEMOS TER ACESSO AO STRUCT DO CLIENTE
