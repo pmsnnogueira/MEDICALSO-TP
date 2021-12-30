@@ -13,8 +13,8 @@
 
 
 typedef struct{
-    int pid;
-    char sintomas[40], classificacao[40];
+    int pid_cli, pid_med, cli_med;//se o cli_med estiver a 0 é um cliente, se estiver a 1 é um médico
+    char sintomas[40], classificacao[40], msg[100], especialidade[40];
 } pedido;
 
 #endif //TP_SO_BIBLIO_H
