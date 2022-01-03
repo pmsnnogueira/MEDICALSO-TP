@@ -249,18 +249,21 @@ int main(int argc, char* argv[], char* envp[]) {
             }
         }
 
-        if(ite_cli != 0 && ite_med != 0){
-            p_cli[0].pid_med = p_med[0].pid_med;
-            printf("\ncli: %d\tmed: %d\tmed_passado: %d", p_cli[0].pid_cli, p_med[0].pid_med, p_cli[0].pid_med);
+        if(i == 0){
+            if(ite_cli != 0 && ite_med != 0){
+                p_cli[0].pid_med = p_med[0].pid_med;
+                printf("\ncli: %d\tmed: %d\tmed_passado: %d", p_cli[0].pid_cli, p_med[0].pid_med, p_cli[0].pid_med);
 
-            fd_cli = open(str_cli, O_WRONLY);
-            n_write = write(fd_cli, &p_cli[0], sizeof(pedido));
-            if(n_write == -1){
-                printf("\nNao conseguiu mandar a informação para o cliente...");
+                fd_cli = open(str_cli, O_WRONLY);
+                n_write = write(fd_cli, &p_cli[0], sizeof(pedido));
+                if(n_write == -1){
+                    printf("\nNao conseguiu mandar a informação para o cliente...");
+                    close(fd_cli);
+                    break;
+                }
                 close(fd_cli);
-                break;
+                ++i;
             }
-            close(fd_cli);
         }
     }while(strcmp(str_com, "sair\n") != 0);
 
