@@ -1,22 +1,35 @@
 //
 // Created by rafael on 28/10/21.
 //
-#include "cliente.h"
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/select.h>
+#include <pthread.h>
+
 
 #define FIFO_SERV "canal"
 #define FIFO_CLI "cli%d"
-#define FIFO_LIG_M "ligM%d"
-#define FIFO_LIG_C "ligC%d"
+#define FIFO_MED "med%d"
+
+typedef struct{
+    int pid_cli, pid_med, cli_med, com, sair, temp, prio;//se o cli_med estiver a 0 é um cliente, se estiver a 1 é um médico
+    char sintomas[40], classificacao[40], msg[100], especialidade[40];
+} pedido;
 
 
 int main(int argc,char *argv[])
 {
-    cliente a;
-    char sintoma[100], str[40], str_lig_c[40], str_lig_m[40], str_com[40];
-    int fd, n, fd_cli = 0, n_cli, fd_lig_c = 0, fd_lig_m = 0, res_com, maxfd;
+    char nome[100], *ptr;
+    char sintoma[100], str[40], str_lig_m[40], str_com[40], str_lig_c[40];
+    int fd, n, fd_cli = 0, n_cli, fd_lig_c = 0, res_com, fd_lig_m = 0, maxfd, estado;
     pedido p;
     struct timeval tempo;
     fd_set fds;
+    pthread_t tid;
 
     if(argc < 2)
     {
@@ -24,7 +37,7 @@ int main(int argc,char *argv[])
         return 1;
     }
 
-    strcpy(a.nome, argv[1]);
+    strcpy(nome, argv[1]);
 
 
     p.pid_cli = getpid();
@@ -38,14 +51,13 @@ int main(int argc,char *argv[])
     sprintf(str, FIFO_CLI, p.pid_cli);
     mkfifo(str, 0600);
 
-    sprintf(str_lig_c, FIFO_LIG_C, p.pid_cli);
-    mkfifo(str_lig_c, 0600);
 
-
-    printf("\n[PID=%d]Bom dia %s",p.pid_cli, a.nome);
+    printf("\n[PID=%d]Bom dia %s",p.pid_cli, nome);
 
     p.cli_med = 0;
     p.pid_med = 0;
+    p.com = 0;
+    p.sair = 0;
 
     printf("\nQuais sao os seus sistomas?\n");
     fgets(p.sintomas, sizeof(p.sintomas), stdin);
@@ -64,10 +76,20 @@ int main(int argc,char *argv[])
     close(fd);
 
 
-    fd_cli = open(str, O_RDWR);
+    fd_cli = open(str, O_RDONLY);
     read(fd_cli, &p, sizeof(pedido));
-    printf("\nO seu diagnostico e: %s", p.classificacao);
     close(fd_cli);
+
+    ptr = strtok(p.classificacao, " ");
+    strcpy(sintoma, ptr);
+    ptr = strtok(NULL, " ");
+    strcpy(p.classificacao, sintoma);
+    p.prio = atoi(ptr);
+
+    estado = 1;
+
+    printf("\nO seu diagnostico e: %s e tem prioridade: %d", p.classificacao, p.prio);
+    fflush(stdout);
 
 
     fd_cli = open(str, O_RDWR | O_NONBLOCK);
@@ -76,78 +98,103 @@ int main(int argc,char *argv[])
         exit(1);
     }
 
-    fd_lig_c = open(str_lig_c, O_RDWR | O_NONBLOCK);
-    if(fd_lig_c == -1){
-        printf("\nNao conseguiu abrir o FIFO de comunicacao do cliente...");
-        exit(1);
-    }
     do{
+        printf("\nEstado: %d", estado);
+
         FD_ZERO(&fds);
         FD_SET(0, &fds);
         FD_SET(fd_cli, &fds);
-        FD_SET(fd_lig_c, &fds);
         tempo.tv_sec = 10;
         tempo.tv_usec = 0;
 
-        maxfd = (fd_cli > fd_lig_c) ? fd_cli : fd_lig_c;
+        res_com = select(fd_cli+1, &fds, NULL, NULL, &tempo);
 
-        res_com = select(maxfd+1, &fds, NULL, NULL, &tempo);
         if(res_com == 0){
             printf("\nA espera...");
         }else if(res_com > 0){
             if(FD_ISSET(0, &fds)){
                 fgets(str_com, sizeof(str_com), stdin);
-                break;
+
+                strcpy(p.msg, str_com);
+
+                if(estado == 1){
+                    //se ja tiver recebido o confirmação do balcao, tudo o que for escrito é enviado para po balcao
+                    fd = open(FIFO_SERV, O_WRONLY);
+                    if(fd == -1){
+                        printf("\nNao conseguiu abrir o FIFo do balcao...");
+                        exit(1);
+                    }
+
+                    p.cli_med = 0;
+
+                    n = write(fd, &p, sizeof(pedido));
+                    if(n == -1){
+                        printf("\nNao conseguiu escrever para o balcao...");
+                        exit(1);
+                    }
+                    close(fd);
+                }else{
+                    //se estiver me consulta tudo que escrever vai ser enviado para o medico
+                    sprintf(str_lig_m, FIFO_MED, p.pid_med);
+
+                    p.cli_med = 0;
+
+                    if(access(str_lig_m, F_OK) == 0){
+                        fd_lig_m = open(str_lig_m, O_WRONLY);
+                        write(fd_lig_m, &p, sizeof(pedido));
+                        close(fd_lig_m);
+                    }
+                }
             }
             if(FD_ISSET(fd_cli, &fds)){
-
-                read(fd_cli, &p, sizeof(pedido));
+                n = read(fd_cli, &p, sizeof(pedido));
                 if(n == -1){
                     printf("\nNao conseguiu ler do balcao...");
                     exit(1);
                 }
 
-                printf("\nPID medico: %d", p.pid_med);
+                if(p.cli_med == 1){
+                    estado = 2;
 
-                sprintf(str_lig_m, FIFO_LIG_M, p.pid_med);
-                if(access(str_lig_m, F_OK) == 0){
+                    printf("\n[PID_MED: %d] %s", p.pid_med, p.msg);
+                    if(strcmp(p.msg, "acabou\n") == 0){
+                        estado = 1;
+                        printf("\nA consulta acabou...\n");
+                        strcpy(str_com, "sair\n");
+                    }
 
-                    printf("\nEsta conectado ao seu medico!\nR: ");
-                    fgets(p.msg, sizeof(p.msg), stdin);
-
-                    fd_lig_m = open(str_lig_m, O_WRONLY);
-                    write(fd_lig_m, &p, sizeof(pedido));
-                    close(fd_lig_m);
-
+                }else{
+                    estado = 1;
                 }
-            }
-            if(FD_ISSET(fd_lig_c, &fds)){
-                read(fd_lig_c, &p, sizeof(pedido));
-
-                printf("\n[PID_MED: %d]%s\nR: ",p.pid_med, p.msg);
-
-                if(strcmp(p.msg, "acabou\n") == 0){
-                    strcpy(str_com, "sair\n");
-                    break;
-                }
-
-                fgets(p.msg, sizeof(p.msg), stdin);
-
-                fd_lig_m = open(str_lig_m, O_WRONLY);
-                write(fd_lig_m, &p, sizeof(pedido));
-                close(fd_lig_m);
             }
         }
     }while(strcmp(str_com, "sair\n") != 0);
 
+
+    //quando o cliente encerra da sinal ao balcao
+    p.sair = 1;
+
+    fd = open(FIFO_SERV, O_WRONLY);
+    if(fd == -1){
+        printf("\nNao conseguiu abrir o FIFo do balcao...");
+        exit(1);
+    }
+    n = write(fd, &p, sizeof(pedido));
+    if(n == -1){
+        printf("\nNao conseguiu escrever para o balcao...");
+        exit(1);
+    }
+    close(fd);
+
+    strcpy(str_com, "sair\n");
 
     close(fd_lig_c);
     close(fd_cli);
     unlink(str);
     unlink(str_lig_c);
 
-    return 0;
+    //pthread_join(tid, NULL);
+
+    exit(0);
 }
-
-
 
