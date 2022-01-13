@@ -21,6 +21,7 @@ typedef struct{
 
 
 typedef struct Balcao{
+    pthread_mutex_t *trinco;
     int continua;
     int maxclientes, maxmedicos;
     pedido p_cli[5];
@@ -89,8 +90,11 @@ void acorda(int s, siginfo_t *info, void* uc){
 void* mostraListas(void* dados){
 
     balcao *td = (balcao* ) dados;
+
     do {
         sleep(td->tempo);
+        pthread_mutex_lock(td->trinco);
+        printf("\n\n************************** Listar Clientes e Medicos **************************\n");
         printf("\nClientes: ");
         for (int i = 0; i < td->ite_cli; ++i) {
             printf("\nCliente %d:", i);
@@ -101,9 +105,12 @@ void* mostraListas(void* dados){
         for (int i = 0; i < td->ite_med; ++i) {
             printf("\nMedico %d:", i);
             printf("\n\tPID: %d", td->p_med[i].pid_med);
+            printf("\n\tEspecialidade: %s", td->p_med[i].especialidade);
             printf("\n\tEsta em consulta? (0->nao | 1->sim): %d", td->p_med[i].com);
             ++td->p_med[i].temp;
         }
+        printf("\n\n*******************************************************************************\n");
+        pthread_mutex_unlock(td->trinco);
     }while(td->continua == 1);
 
     pthread_exit(NULL);
@@ -129,12 +136,18 @@ int main(int argc, char* argv[], char* envp[]) {
     act.sa_flags = SA_SIGINFO;
     sigaction(SIGUSR2, &act, NULL);
 
+    //Thread
+    pthread_mutex_t trinco;
+    if(pthread_mutex_init(&trinco, NULL) != 0) {
+        printf("\nErro na inicialização do mutex\n");
+        return 1;
+    }
 
     setbuf(stdout, NULL);
 
     if (getenv("MAXCLIENTES") == NULL) {
         printf("Erro nas variaveis de Ambiente 'MAXCLIENTES'\n");
-
+        return 0;
     } else {
         var = atoi(getenv("MAXCLIENTES"));
         if (var > 0) {
@@ -147,7 +160,7 @@ int main(int argc, char* argv[], char* envp[]) {
 
     if (getenv("MAXMEDICOS") == NULL) {
         printf("Erro nas variaveis de ambiente 'MAXMEDICOS'\n");
-
+        return 0;
     } else {
         var = atoi(getenv("MAXMEDICOS"));
         if (var > 0) {
@@ -221,6 +234,7 @@ int main(int argc, char* argv[], char* envp[]) {
 
     b.continua = 0; //Permitir correr os medico
     b.tempo = 20;
+    b.trinco = &trinco;
     pthread_create(&tid, NULL, mostraListas, (void* ) &b);
 
     do {
@@ -306,6 +320,8 @@ int main(int argc, char* argv[], char* envp[]) {
                                 exit(1);
                             }
                             close(fd_med);
+
+
                             b.p_med[b.ite_med] = p;
                             ++b.ite_med;
                             printf("\nN. medicos: %d", b.ite_med);
@@ -325,17 +341,26 @@ int main(int argc, char* argv[], char* envp[]) {
                 }
             }
             if(FD_ISSET(fd_sinal, &fds)){
-               int n = read(fd_sinal, &p , sizeof(pedido));
+                int n = read(fd_sinal, &p , sizeof(pedido));
                 if (n == -1) {
                     printf("\nNao conseguiu ler...");
                     exit(1);
                 }
-               
+
             }
         }
 
         if(i == 0){
             if(b.ite_cli != 0 && b.ite_med != 0){
+                /*for(int i = 0; i < b.ite_med; ++i) {
+                    for(int j = 0 ; j < b.ite_cli ; ++j){
+                        if(b.p_med[i].especialidade == b.p_cli[j].classificacao){
+
+
+
+                        }                                                                                   TESTAR
+                    }
+                }*/
                 b.p_cli[0].pid_med = b.p_med[0].pid_med;
                 b.p_cli[0].com = 1;
                 b.p_med[0].com = 1;
@@ -366,6 +391,7 @@ int main(int argc, char* argv[], char* envp[]) {
     b.continua = 0;
     pthread_kill(tid, SIGUSR2);
     pthread_join(tid, NULL);
+    pthread_mutex_destroy(&trinco);
 
     return 0;
 }

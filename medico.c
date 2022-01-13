@@ -154,7 +154,7 @@ int main(int argc, char* argv[])
                 if(p.cli_med == 0){
                     estado = 2;
 
-                    printf("\n[PID_CLI: %d] %s", p.pid_cli, p.msg);
+                    printf("\n[PID_CLI: %d]Enviou: %s", p.pid_cli, p.msg);
                 }else{
                     estado = 1;
 

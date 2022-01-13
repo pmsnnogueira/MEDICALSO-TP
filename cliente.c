@@ -156,7 +156,7 @@ int main(int argc,char *argv[])
                 if(p.cli_med == 1){
                     estado = 2;
 
-                    printf("\n[PID_MED: %d] %s", p.pid_med, p.msg);
+                    printf("\n[PID_MED: %d]Enviou: %s", p.pid_med, p.msg);
                     if(strcmp(p.msg, "acabou\n") == 0){
                         estado = 1;
                         printf("\nA consulta acabou...\n");
