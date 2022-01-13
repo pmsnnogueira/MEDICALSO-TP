@@ -20,13 +20,14 @@ typedef struct{
 } pedido;
 
 
-
 typedef struct Balcao{
     int continua;
     int maxclientes, maxmedicos;
     pedido p_cli[5];
     pedido p_med[5];
     int ite_cli , ite_med;//"iteradores"
+
+    int tempo; //Tempo para mostrar a lista
 
 }balcao;
 
@@ -42,39 +43,37 @@ int comandos(char *frase){
 
     for(int i=0 ; i < 7 ; i++)
     {
-        //printf("%ld-",strlen(frase));
         if(strncmp(frase,comandos[0],tam) == 0)
         {
             printf("Comando Utentes\n");
-            break;
+            return 1;
         }
         if(strncmp(frase,comandos[1],tam) == 0)
         {
             printf("especialistas\n");
-            break;
+            return 2;
         }
         if(strncmp(frase,comandos[2],tam) == 0)
         {
             printf("delut\n");
-            break;
+            return 3;
         }
         if(strncmp(frase,comandos[3],tam) == 0)
         {
             printf("delesp\n");
-            break;
+            return 4;
         }
         if(strncmp(frase,comandos[4],tam) == 0)
         {
             printf("freq\n");
+            return 5;
 
-
-            break;
         }
         if(strncmp(frase,comandos[5],tam) == 0)
         {
             printf("Comando encerra\n");
 
-            return 2;
+            return 6;
         }
 
     }
@@ -88,11 +87,11 @@ void acorda(int s, siginfo_t *info, void* uc){
 
 
 void* mostraListas(void* dados){
-    balcao *td = (balcao* ) dados;
 
+    balcao *td = (balcao* ) dados;
     do {
-        sleep(20),
-                printf("\nClientes: ");
+        sleep(td->tempo);
+        printf("\nClientes: ");
         for (int i = 0; i < td->ite_cli; ++i) {
             printf("\nCliente %d:", i);
             printf("\n\tPID: %d", td->p_cli[i].pid_cli);
@@ -105,7 +104,7 @@ void* mostraListas(void* dados){
             printf("\n\tEsta em consulta? (0->nao | 1->sim): %d", td->p_med[i].com);
             ++td->p_med[i].temp;
         }
-    }while(td->continua == 0);
+    }while(td->continua == 1);
 
     pthread_exit(NULL);
 }
@@ -115,13 +114,14 @@ int main(int argc, char* argv[], char* envp[]) {
     int i = 0, canal[2], retorno[2], res, res_fork, res_pipe, estado, var, n_write, maxfd;
     int n_fifo, fd_canal, fd_cli, res_com, fd_med, fd_sinal;
     char str[100], str1[40], str_cli[40], str_com[40], str_med[40];
-    balcao b;
-    b.ite_cli = 0; b.ite_med = 0;
+
+
     struct timeval tempo;
     fd_set fds;
-    pthread_t tid;
-
-    pedido p;
+    pthread_t tid;  //Thread
+    balcao b;   //Estrutura balcao
+    b.ite_cli = 0; b.ite_med = 0;
+    pedido p;   //Estrutura Pedido
 
     struct sigaction act;
 
@@ -219,11 +219,12 @@ int main(int argc, char* argv[], char* envp[]) {
     close(retorno[1]);
 
 
-    b.continua = 1;
+    b.continua = 0; //Permitir correr os medico
+    b.tempo = 20;
     pthread_create(&tid, NULL, mostraListas, (void* ) &b);
 
     do {
-        printf("\nComandos/Sintomas: ");
+        printf("\nComandos: ");
 
         FD_ZERO(&fds);
         FD_SET(0, &fds);
@@ -242,7 +243,7 @@ int main(int argc, char* argv[], char* envp[]) {
             if (FD_ISSET(0, &fds)) {
                 fgets(str_com, sizeof(str_com), stdin);
                 if (comandos(str_com) == 2) {
-                    printf("\nA terminar o programa...");
+                    printf("\nA terminar o programa...\n");
                     break;
                 }
             }
@@ -250,29 +251,31 @@ int main(int argc, char* argv[], char* envp[]) {
 
                 n_fifo = read(fd_canal, &p, sizeof(pedido));
                 if (n_fifo == -1) {
-                    printf("\nNao conseguiu ler...");
+                    printf("\nNao conseguiu ler...\n");
                     exit(1);
                 }
                 if (n_fifo == sizeof(pedido)) {
+                    b.continua = 1;         //Permitir correr a lista
                     if (p.cli_med == 0) {
                         if (b.ite_cli <= b.maxclientes - 1) {
                             n_write = write(canal[1], p.sintomas, strlen(p.sintomas));
                             if (n_write == -1) {
-                                printf("\nNão conseguiu escrever...");
+                                printf("\nNão conseguiu escrever...\n");
                                 exit(1);
                             }
                             res = read(retorno[0], p.classificacao, sizeof(p.classificacao) - 1);
                             if (res == -1) {
-                                printf("\nNão conseguiu ler...");
+                                printf("\nNão conseguiu ler...\n");
                                 exit(1);
                             }
                             p.classificacao[res] = '\0';
 
+                            //if(p.)
                             sprintf(str_cli, FIFO_CLI, p.pid_cli);
                             fd_cli = open(str_cli, O_WRONLY);
                             n_write = write(fd_cli, &p, sizeof(pedido));
                             if (n_write == -1) {
-                                printf("\nNão conseguiu escrever...");
+                                printf("\nNão conseguiu escrever...\n");
                                 exit(1);
                             }
                             close(fd_cli);
@@ -281,7 +284,7 @@ int main(int argc, char* argv[], char* envp[]) {
                             printf("\nN. clientes: %d", b.ite_cli);
                             printf("\nSintomas: %s", b.p_cli[b.ite_cli-1].sintomas);
                         } else {
-                            strcpy(p.classificacao, "O balcao nao consegue atender mais clientes...");
+                            strcpy(p.classificacao, "O balcao nao consegue atender mais clientes...\n");
                             sprintf(str_cli, FIFO_CLI, p.pid_cli);
                             fd_cli = open(str_cli, O_WRONLY);
                             n_write = write(fd_cli, &p, sizeof(pedido));
@@ -322,7 +325,12 @@ int main(int argc, char* argv[], char* envp[]) {
                 }
             }
             if(FD_ISSET(fd_sinal, &fds)){
-
+               int n = read(fd_sinal, &p , sizeof(pedido));
+                if (n == -1) {
+                    printf("\nNao conseguiu ler...");
+                    exit(1);
+                }
+               
             }
         }
 
@@ -355,6 +363,7 @@ int main(int argc, char* argv[], char* envp[]) {
     unlink(FIFO_SINAL);
 
     p.sair = 1;
+    b.continua = 0;
     pthread_kill(tid, SIGUSR2);
     pthread_join(tid, NULL);
 
