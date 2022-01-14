@@ -1,3 +1,3 @@
 export MORADA="Coimbra"
-export MAXMEDICOS=25
-export MAXCLIENTES=4
+export MAXMEDICOS=5
+export MAXCLIENTES=5

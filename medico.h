@@ -5,11 +5,11 @@
 #ifndef TP_SO_MEDICO_H
 #define TP_SO_MEDICO_H
 
-typedef struct medico{
+#include "biblio.h"
 
-    int medico;
-    char nome[40];
-    char especialidade[40];
-}medico;
+typedef struct {
+    pedido m;
+    pthread_mutex_t *trinco;
+} medico;
 
 #endif //TP_SO_MEDICO_H

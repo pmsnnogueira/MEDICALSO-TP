@@ -1,25 +1,9 @@
 //
 // Created by rafael on 28/10/21.
 //
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/select.h>
-#include <pthread.h>
 
 
-#define FIFO_SERV "canal"
-#define FIFO_CLI "cli%d"
-#define FIFO_MED "med%d"
-
-typedef struct{
-    int pid_cli, pid_med, cli_med, com, sair, temp, prio;//se o cli_med estiver a 0 é um cliente, se estiver a 1 é um médico
-    char sintomas[40], classificacao[40], msg[100], especialidade[40];
-} pedido;
-
+#include "biblio.h"
 
 int main(int argc,char *argv[])
 {
@@ -77,7 +61,11 @@ int main(int argc,char *argv[])
 
 
     fd_cli = open(str, O_RDONLY);
-    read(fd_cli, &p, sizeof(pedido));
+    n = read(fd_cli, &p, sizeof(pedido));
+    if(n == -1){
+        printf("\nNao conseguiu ler do balcao...");
+        exit(1);
+    }
     close(fd_cli);
 
     ptr = strtok(p.classificacao, " ");
@@ -99,7 +87,9 @@ int main(int argc,char *argv[])
     }
 
     do{
-        printf("\nEstado: %d", estado);
+        if(estado == 2){
+            printf("R: ");
+        }
 
         FD_ZERO(&fds);
         FD_SET(0, &fds);
@@ -134,7 +124,7 @@ int main(int argc,char *argv[])
                     }
                     close(fd);
                 }else{
-                    //se estiver me consulta tudo que escrever vai ser enviado para o medico
+                    //se estiver na consulta tudo que escrever vai ser enviado para o medico
                     sprintf(str_lig_m, FIFO_MED, p.pid_med);
 
                     p.cli_med = 0;
@@ -173,8 +163,9 @@ int main(int argc,char *argv[])
 
     //quando o cliente encerra da sinal ao balcao
     p.sair = 1;
+    p.cli_med = 0;
 
-    fd = open(FIFO_SERV, O_WRONLY);
+    fd = open(FIFO_SINAL, O_WRONLY);
     if(fd == -1){
         printf("\nNao conseguiu abrir o FIFo do balcao...");
         exit(1);
@@ -192,8 +183,6 @@ int main(int argc,char *argv[])
     close(fd_cli);
     unlink(str);
     unlink(str_lig_c);
-
-    //pthread_join(tid, NULL);
 
     exit(0);
 }

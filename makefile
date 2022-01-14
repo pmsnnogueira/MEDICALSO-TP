@@ -16,6 +16,6 @@ limpa:
 	rm -f *.o
 	rm -f canal
 	rm -f lig*
-	rm -f Fcli*
-	rm -f Fmed*
+	rm -f Lcli*
+	rm -f Lmed*
 	rm -f sinal
