@@ -21,6 +21,10 @@ int main(int argc,char *argv[])
         return 1;
     }
 
+
+    setbuf(stdout, NULL);
+
+
     strcpy(nome, argv[1]);
 
 
@@ -76,7 +80,7 @@ int main(int argc,char *argv[])
 
     estado = 1;
 
-    printf("\nO seu diagnostico e: %s e tem prioridade: %d", p.classificacao, p.prio);
+    printf("\nO seu diagnostico e: %s e tem prioridade: ", p.classificacao);
     fflush(stdout);
 
 

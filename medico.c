@@ -35,14 +35,17 @@ int main(int argc, char* argv[]) {
     medico m;
     pthread_t tid;
 
-    pthread_mutex_t trinco;
-    if (pthread_mutex_init(&trinco, NULL) != 0) {
-        printf("\nErro na inicialização do mutex\n");
-        return 1;
-    }
 
     if (argc < 3) {
         printf("\nIndique o seu nome e a sua especialidade por parametro");
+        return 1;
+    }
+
+    setbuf(stdout, NULL);
+
+    pthread_mutex_t trinco;
+    if (pthread_mutex_init(&trinco, NULL) != 0) {
+        printf("\nErro na inicialização do mutex\n");
         return 1;
     }
 
@@ -63,6 +66,7 @@ int main(int argc, char* argv[]) {
     m.m.pid_cli = 0;
     m.m.com = 0;
     m.m.sair = 0;
+    m.m.temp = 20;
     strcpy(m.m.especialidade, argv[2]);
 
 

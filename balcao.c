@@ -68,6 +68,7 @@ void* mostraListas(void* dados){
                 printf("\nMedico %d:", i);
                 printf("\n\tPID: %d", td->p_med[i].pid_med);
                 printf("\n\tEspecialidade: %s", td->p_med[i].especialidade);
+                printf("\n\tTemporizador: %d", td->p_med[i].temp);
                 printf("\n\tEsta em consulta? (0->nao | 1->sim): %d", td->p_med[i].com);
                 ++td->p_med[i].temp;
             }
@@ -80,7 +81,7 @@ void* mostraListas(void* dados){
 }
 
 void* apagaMed(void* dados){
-  /*  balcao *td = (balcao* ) dados;
+    balcao *td = (balcao* ) dados;
 
     do {
         sleep(2);
@@ -101,7 +102,7 @@ void* apagaMed(void* dados){
 
         pthread_mutex_unlock(td->trinco);
     }while(td->continua);
-    pthread_exit(NULL);*/
+    pthread_exit(NULL);
 }
 
 
@@ -114,6 +115,11 @@ void* liga(void* dados){
 
     do{
         sleep(5);
+
+        for (int i = 0; i < td->ite_cli; ++i) {
+            printf("\nCli %d : %s",i, td->p_cli[i].classificacao);
+        }
+
         if(td->ite_cli > 0 && td->ite_med > 0) {
             pthread_mutex_lock(td->trinco);
             for (int i = 0; i < td->ite_cli; ++i) {
@@ -128,15 +134,16 @@ void* liga(void* dados){
                 }
             }
 
-            printf("\nPID_Cli: %d", cli_aux.pid_cli);
+            printf("\nEnconnteri um cliente dda esecialidade %s com o PID_Cli: %d\n", cli_aux.classificacao, cli_aux.pid_cli);
 
             for (int i = 0; i < td->ite_med; ++i) {
+                printf("\nEspe MED =  %s [LIVRE? %d]|||| cla CLI = %s", td->p_med[i].especialidade,td->p_med[i].com, cli_aux.classificacao);
                 if (strcmp(td->p_med[i].especialidade, cli_aux.classificacao) == 0 && td->p_med[i].com == 0) {
                     cli_aux.pid_med = td->p_med[i].pid_med;
                     cli_aux.com = 1;
                     td->p_med[i].com = 1;
                     cli_aux.cli_med = 1;
-                    printf("\ncli: %d\tmed: %d\tmed_passado: %d", cli_aux.pid_cli, td->p_med[i].pid_med,
+                    printf("\ncli: %d\tmed: %d\tmed_passado: %d\n", cli_aux.pid_cli, td->p_med[i].pid_med,
                            cli_aux.pid_med);
 
                     sprintf(str_cli, FIFO_CLI, cli_aux.pid_cli);
@@ -350,6 +357,14 @@ int main(int argc, char* argv[], char* envp[]) {
                             }
                             close(fd_cli);
 
+                            char * ptr;
+                            char aux_str[50];
+                            ptr = strtok(p.classificacao, " ");
+                            strcpy(aux_str, ptr);
+                            ptr = strtok(NULL, " ");
+                            strcpy(p.classificacao, aux_str);
+                            p.prio = atoi(ptr);
+
                             b.p_cli[b.ite_cli] = p;
                             ++b.ite_cli;
                         } else {
@@ -409,7 +424,7 @@ int main(int argc, char* argv[], char* envp[]) {
 
                 pthread_mutex_lock(&trinco);
 
-                if(p.cli_med == 1){
+                if(p.cli_med == 1){//medico quer sair
                     for (int j = 0; j < b.ite_med; ++j) {
                         if(b.p_med[i].pid_med == p.pid_med){
                             b.p_med[i].temp = 20;//deu sinal de vida, então repoe o temporizador
