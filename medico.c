@@ -4,7 +4,7 @@
 #include "biblio.h"
 #include "medico.h"
 
-
+void mataThreads(int s, siginfo_t *info, void *uc){}
 
 void *temporizador(void* dados){
     char cmd[100];
@@ -35,6 +35,11 @@ int main(int argc, char* argv[]) {
     medico m;
     pedido p;
     pthread_t tid;
+
+    struct sigaction act;
+    act.sa_sigaction = mataThreads;
+    act.sa_flags = SA_SIGINFO;
+    sigaction(SIGUSR2, &act, NULL);
 
 
     if (argc < 3) {
@@ -123,6 +128,11 @@ int main(int argc, char* argv[]) {
             if(FD_ISSET(0, &fds)){
                 fgets(str_com, sizeof(str_com), stdin);
 
+                if(strcmp(str_com, "sair\n") == 0){
+                    printf("\nVai terminar o programa...");
+                    break;
+                }
+
                 pthread_mutex_lock(&trinco);
                 strcpy(m.m.msg, str_com);
                 pthread_mutex_unlock(&trinco);
@@ -139,7 +149,7 @@ int main(int argc, char* argv[]) {
                     m.m.cli_med = 1;
                     p = m.m;
                     pthread_mutex_lock(&trinco),
-                            write(fd, &p, sizeof(pedido));
+                    write(fd, &p, sizeof(pedido));
                     close(fd);
                 }else{
                     pthread_mutex_lock(&trinco);
@@ -154,6 +164,24 @@ int main(int argc, char* argv[]) {
                         fd_lig_c = open(str_lig_c, O_WRONLY);
                         write(fd_lig_c, &p, sizeof(pedido));
                         close(fd_lig_c);
+                    }
+
+                    if(strcmp(str_com, "acabou\n") == 0){
+                        estado = 1;
+
+                        fd = open(FIFO_SERV, O_WRONLY);
+                        if(fd == -1){
+                            printf("\nNao conseguiu abrir o FIFo do balcao...");
+                            exit(1);
+                        }
+
+
+                        pthread_mutex_lock(&trinco);
+                        m.m.cli_med = 1;
+                        p = m.m;
+                        pthread_mutex_unlock(&trinco);
+                        write(fd, &p, sizeof(pedido));
+                        close(fd);
                     }
                 }
             }
@@ -180,7 +208,7 @@ int main(int argc, char* argv[]) {
                     pthread_mutex_lock(&trinco);
 
                     m.m = p;
-                    if (strcmp(m.m.msg, "o balcao fechou") == 0) {
+                    if (strcmp(m.m.msg, "o balcao fechou") == 0 || m.m.sair == 1) {
                         printf("%s", m.m.msg);
                         strcpy(str_com, "sair\n");
                     }
@@ -198,6 +226,8 @@ int main(int argc, char* argv[]) {
     pthread_mutex_lock(&trinco);
     m.m.sair = 1;
     pthread_mutex_unlock(&trinco);
+
+    pthread_kill(tid, SIGUSR2);
     pthread_join(tid, NULL);
 
     unlink(str);

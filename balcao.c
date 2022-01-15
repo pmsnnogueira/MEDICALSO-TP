@@ -1,54 +1,6 @@
 #include "balcao.h"
 
-
-int comandos(char *frase){
-    const char comandos[7][25] = {
-            "utentes\n",
-            "especialistas\n",
-            "delut",
-            "delesp",
-            "freq",
-            "encerra\n"};
-
-    for(int i=0 ; i < 7 ; i++)
-    {
-        if(strcmp(frase,comandos[0]) == 0)
-        {
-            printf("Comando Utentes\n");
-            return 1;
-        }
-        if(strcmp(frase,comandos[1]) == 0)
-        {
-            printf("especialistas\n");
-            return 2;
-        }
-        if(strcmp(frase,comandos[2]) == 0)
-        {
-            printf("delut\n");
-            return 3;
-        }
-        if(strcmp(frase,comandos[3]) == 0)
-        {
-            printf("delesp\n");
-            return 4;
-        }
-        if(strcmp(frase,comandos[4]) == 0)
-        {
-            printf("freq\n");
-            return 5;
-
-        }
-        if(strcmp(frase,comandos[5]) == 0)
-        {
-            printf("Comando encerra\n");
-
-            return 6;
-        }
-
-    }
-
-    return 0;
-}
+void mataThreads(int s, siginfo_t *info, void *uc){}
 
 void* mostraListas(void* dados){
 
@@ -119,11 +71,11 @@ int main(int argc, char* argv[], char* envp[]) {
     b.ite_cli = 0; b.ite_med = 0;//"iteradores" dos arrays
     pedido p;   //Estrutura Pedido - enviada/recebida através dos FIFOS
 
-    /*struct sigaction act;
-
-    act.sa_sigaction = acorda;
+    struct sigaction act;
+    act.sa_sigaction = mataThreads;
     act.sa_flags = SA_SIGINFO;
-    sigaction(SIGUSR2, &act, NULL);*/
+    sigaction(SIGUSR2, &act, NULL);
+
 
     //Thread
     pthread_mutex_t trinco;
@@ -257,12 +209,12 @@ int main(int argc, char* argv[], char* envp[]) {
                 strcpy(str1, ptr);
                 ptr = strtok(NULL, " ");
 
-
-                if (comandos(str1) == 6) {
+                if (strcmp(str_com, "encerra\n") == 0) {
                     printf("\nA terminar o programa...\n");
                     strcpy(str_com, "sair\n");
+                    break;
                 }
-                if(comandos(str1) == 1){
+                if(strcmp(str1, "utentes\n") == 0){
                     pthread_mutex_lock(&trinco);
                     if(b.ite_cli == 0){
                         printf("\nNao ha clientes");
@@ -276,7 +228,7 @@ int main(int argc, char* argv[], char* envp[]) {
                     }
                     pthread_mutex_unlock(&trinco);
                 }
-                if(comandos(str1) == 2){
+                if(strcmp(str1, "especialistas\n") == 0){
                     pthread_mutex_lock(&trinco);
                     if(b.ite_med == 0){
                         printf("\nNao ha medicos");
@@ -292,7 +244,7 @@ int main(int argc, char* argv[], char* envp[]) {
                     pthread_mutex_unlock(&trinco);
                 }
 
-                if(comandos(str1) == 3){
+                if(strcmp(str1, "delut") == 0){
 
                     pthread_mutex_lock(&trinco);
 
@@ -332,7 +284,7 @@ int main(int argc, char* argv[], char* envp[]) {
                     }
                 }
 
-                if(comandos(str1) == 4){
+                if(strcmp(str_com, "delesp") == 0){
                     pthread_mutex_lock(&trinco);
 
                     int x = atoi(ptr);
@@ -355,13 +307,13 @@ int main(int argc, char* argv[], char* envp[]) {
 
                     if(flag == 1){
                         p.sair = 1;
-                        sprintf(str_cli, FIFO_CLI, p.pid_med);
-                        fd_cli = open(str_cli, O_WRONLY);
+                        sprintf(str_med, FIFO_MED, p.pid_med);
+                        fd_med = open(str_med, O_WRONLY);
                         if(fd_cli == -1){
                             printf("\nNao conseguiu abrir o  pipe do cliente...");
                             exit(1);
                         }
-                        n_write = write(fd_cli, &p, sizeof(pedido));
+                        n_write = write(fd_med, &p, sizeof(pedido));
                         if(n_write == -1){
                             printf("\nNao conseguiu escrever para o cliente...");
                             exit(1);
@@ -369,6 +321,20 @@ int main(int argc, char* argv[], char* envp[]) {
                         close(fd_cli);
                     }
                 }
+                if(strcmp(str_com, "freq") == 0){
+
+                    int x = atoi(ptr);
+                    pthread_mutex_lock(&trinco);
+
+                    b.tempo = x;
+                    printf("\nMudou a frequencia para %d segundos", b.tempo);
+
+                    pthread_mutex_unlock(&trinco);
+
+                }
+
+
+
                 }
             }
 
@@ -390,6 +356,7 @@ int main(int argc, char* argv[], char* envp[]) {
 
                         for (int j = 0; j < b.ite_cli; ++j) {
                             if(b.p_cli[j].pid_cli == p.pid_cli){
+                                b.p_cli[j].com = 0;
                                 cli_existe = 1;
                                 break;
                             }
@@ -499,6 +466,7 @@ int main(int argc, char* argv[], char* envp[]) {
 
                         for (int j = 0; j < b.ite_cli; ++j) {
                             if(b.p_med[j].pid_med == p.pid_med){
+                                b.p_med[j].com = 0;
                                 med_existe = 1;
                                 break;
                             }
@@ -616,7 +584,7 @@ int main(int argc, char* argv[], char* envp[]) {
                 pthread_mutex_unlock(&trinco);
             }
 
-}while(strcmp(str_com, "sair\n") != 0);
+}while(strcmp(str_com, "encerra\n") != 0);
 
     p.sair = 1;
     b.continua = 0;
@@ -628,14 +596,11 @@ int main(int argc, char* argv[], char* envp[]) {
     unlink(FIFO_SINAL);
 
 
-    //pthread_kill(tid[0], SIGUSR2);
+    pthread_kill(tid[0], SIGUSR2);
     pthread_join(tid[0], NULL);
 
-    //pthread_kill(tid[1], SIGUSR2);
+    pthread_kill(tid[1], SIGUSR2);
     pthread_join(tid[1], NULL);
-
-    //pthread_kill(tid[2], SIGUSR2);
-    pthread_join(tid[2], NULL);
 
     pthread_mutex_destroy(&trinco);
 
