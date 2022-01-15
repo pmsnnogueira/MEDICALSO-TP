@@ -5,9 +5,9 @@ int comandos(char *frase){
     const char comandos[7][25] = {
             "utentes\n",
             "especialistas\n",
-            "delut\n",
-            "delesp\n",
-            "freq\n",
+            "delut",
+            "delesp",
+            "freq",
             "encerra\n"};
 
     for(int i=0 ; i < 7 ; i++)
@@ -250,12 +250,130 @@ int main(int argc, char* argv[], char* envp[]) {
         } else if (res_com > 0) {
             if (FD_ISSET(0, &fds)) {
                 fgets(str_com, sizeof(str_com), stdin);
-                if (comandos(str_com) == 2) {
+
+
+                char *ptr, str1[20];
+                ptr = strtok(str_com, " ");
+                strcpy(str1, ptr);
+                ptr = strtok(NULL, " ");
+
+
+                if (comandos(str1) == 6) {
                     printf("\nA terminar o programa...\n");
                     strcpy(str_com, "sair\n");
-                    return 1;
+                }
+                if(comandos(str1) == 1){
+                    pthread_mutex_lock(&trinco);
+                    if(b.ite_cli == 0){
+                        printf("\nNao ha clientes");
+                        continue;
+                    }
+                    for (int j = 0; j < b.ite_cli; ++j) {
+                        printf("\nCliente %d:", i);
+                        printf("\n\tPID: %d",b.p_cli[i].pid_cli);
+                        printf("\n\tClassificacao: %s %d", b.p_cli[i].classificacao, b.p_cli[i].prio);
+                        printf("\n\tEsta em consulta? (0->nao | 1->sim): %d", b.p_cli[i].com);
+                    }
+                    pthread_mutex_unlock(&trinco);
+                }
+                if(comandos(str1) == 2){
+                    pthread_mutex_lock(&trinco);
+                    if(b.ite_med == 0){
+                        printf("\nNao ha medicos");
+                        continue;
+                    }
+                    for (int j = 0; j < b.ite_med; ++j) {
+                        printf("\nMedico %d:", i);
+                        printf("\n\tPID: %d", b.p_med[i].pid_med);
+                        printf("\n\tEspecialidade: %s", b.p_med[i].especialidade);
+                        printf("\n\tTemporizador: %d", b.p_med[i].temp);
+                        printf("\n\tEsta em consulta? (0->nao | 1->sim): %d", b.p_med[i].com);
+                    }
+                    pthread_mutex_unlock(&trinco);
+                }
+
+                if(comandos(str1) == 3){
+
+                    pthread_mutex_lock(&trinco);
+
+                    int x = atoi(ptr);
+                    int flag = 0;
+
+                    for (int j = 0; j < b.ite_cli; ++j) {
+                        if(b.p_cli[j].pid_cli == x && b.p_cli[i].com == 0){
+                            p = b.p_cli[j];
+                            flag = 1;
+                            for (int k = j; k < b.ite_cli-1; ++k) {
+                                b.p_cli[k] = b.p_cli[k+1];
+                            }
+                            --b.ite_cli;
+                        }else{
+                            printf("\nO cliente ou está em consulta ou então não existe");
+                        }
+                    }
+
+                    pthread_mutex_unlock(&trinco);
+
+                    if(flag == 1){
+                        p.cli_med = 1;
+                        strcpy(p.msg, "acabou\n");
+                        sprintf(str_cli, FIFO_CLI, p.pid_cli);
+                        fd_cli = open(str_cli, O_WRONLY);
+                        if(fd_cli == -1){
+                            printf("\nNao conseguiu abrir o  pipe do cliente...");
+                            exit(1);
+                        }
+                        n_write = write(fd_cli, &p, sizeof(pedido));
+                        if(n_write == -1){
+                            printf("\nNao conseguiu escrever para o cliente...");
+                            exit(1);
+                        }
+                        close(fd_cli);
+                    }
+                }
+
+                if(comandos(str1) == 4){
+                    pthread_mutex_lock(&trinco);
+
+                    int x = atoi(ptr);
+                    int flag = 0;
+
+                    for (int j = 0; j < b.ite_med; ++j) {
+                        if(b.p_med[j].pid_med == x && b.p_med[i].com == 0){
+                            p = b.p_med[j];
+                            flag = 1;
+                            for (int k = j; k < b.ite_med-1; ++k) {
+                                b.p_med[k] = b.p_med[k+1];
+                            }
+                            --b.ite_med;
+                        }else{
+                            printf("\nO medico ou está em consulta ou então não existe");
+                        }
+                    }
+
+                    pthread_mutex_unlock(&trinco);
+
+                    if(flag == 1){
+                        p.sair = 1;
+                        sprintf(str_cli, FIFO_CLI, p.pid_med);
+                        fd_cli = open(str_cli, O_WRONLY);
+                        if(fd_cli == -1){
+                            printf("\nNao conseguiu abrir o  pipe do cliente...");
+                            exit(1);
+                        }
+                        n_write = write(fd_cli, &p, sizeof(pedido));
+                        if(n_write == -1){
+                            printf("\nNao conseguiu escrever para o cliente...");
+                            exit(1);
+                        }
+                        close(fd_cli);
+                    }
+                }
                 }
             }
+
+
+
             if (FD_ISSET(fd_canal, &fds)) {
 
                 n_fifo = read(fd_canal, &p, sizeof(pedido));
@@ -421,7 +539,7 @@ int main(int argc, char* argv[], char* envp[]) {
                                     b.p_cli[j].com = 1;
                                     p.pid_cli = b.p_cli[j].pid_cli;
                                     p.com = 1;
-                                    printf("\nEncontrou um medico (%d) para o atender", b.p_med[j].pid_med);
+                                    printf("\nEncontrou um cliente (%d) que precisa de ser atendido", b.p_cli[j].pid_cli);
                                 }else{
                                     p.com = 0;
                                     printf("\nNao encontrou nenhum cliente");
@@ -497,9 +615,8 @@ int main(int argc, char* argv[], char* envp[]) {
 
                 pthread_mutex_unlock(&trinco);
             }
-        }
 
-    }while(strcmp(str_com, "sair\n") != 0);
+}while(strcmp(str_com, "sair\n") != 0);
 
     p.sair = 1;
     b.continua = 0;
