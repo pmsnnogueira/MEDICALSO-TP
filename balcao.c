@@ -89,7 +89,7 @@ void* apagaMed(void* dados){
 
         if(td->ite_med > 0){
             for (int i = 0; i < td->ite_med; ++i) {
-                if(td->p_med[i].temp == 0){
+                if(td->p_med[i].temp <= 0){
                     for (int j = i; j < td->ite_med - 1; ++j) {
                         td->p_med[j] = td->p_med[j+1];
                     }
@@ -106,64 +106,6 @@ void* apagaMed(void* dados){
 }
 
 
-void* liga(void* dados){
-    balcao *td = (balcao* ) dados;
-
-    pedido cli_aux;
-    int fd_cli, n_write;
-    char str_cli[50];
-
-    do{
-        sleep(5);
-
-        for (int i = 0; i < td->ite_cli; ++i) {
-            printf("\nCli %d : %s",i, td->p_cli[i].classificacao);
-        }
-
-        if(td->ite_cli > 0 && td->ite_med > 0) {
-            pthread_mutex_lock(td->trinco);
-            for (int i = 0; i < td->ite_cli; ++i) {
-                if (td->p_cli[i].com == 0) {
-                    cli_aux = td->p_cli[i];
-                    for (int j = 0; j < td->ite_cli; ++j) {
-                        if (strcmp(td->p_cli[i].classificacao, td->p_cli[j].classificacao) == 0 &&
-                            td->p_cli[i].prio > td->p_cli[j].prio) {
-                            cli_aux = td->p_cli[j];
-                        }
-                    }
-                }
-            }
-
-            printf("\nEnconnteri um cliente dda esecialidade %s com o PID_Cli: %d\n", cli_aux.classificacao, cli_aux.pid_cli);
-
-            for (int i = 0; i < td->ite_med; ++i) {
-                printf("\nEspe MED =  %s [LIVRE? %d]|||| cla CLI = %s", td->p_med[i].especialidade,td->p_med[i].com, cli_aux.classificacao);
-                if (strcmp(td->p_med[i].especialidade, cli_aux.classificacao) == 0 && td->p_med[i].com == 0) {
-                    cli_aux.pid_med = td->p_med[i].pid_med;
-                    cli_aux.com = 1;
-                    td->p_med[i].com = 1;
-                    cli_aux.cli_med = 1;
-                    printf("\ncli: %d\tmed: %d\tmed_passado: %d\n", cli_aux.pid_cli, td->p_med[i].pid_med,
-                           cli_aux.pid_med);
-
-                    sprintf(str_cli, FIFO_CLI, cli_aux.pid_cli);
-                    fd_cli = open(str_cli, O_WRONLY);
-                    n_write = write(fd_cli, &cli_aux, sizeof(pedido));
-                    if (n_write == -1) {
-                        printf("\nNao conseguiu mandar a informação para o cliente...");
-                        close(fd_cli);
-                        break;
-                    }
-                    close(fd_cli);
-                    break;
-                }
-            }
-            pthread_mutex_unlock(td->trinco);
-        }
-    }while(td->continua);
-    pthread_exit(NULL);
-}
-
 int main(int argc, char* argv[], char* envp[]) {
     int i = 0, canal[2], retorno[2], res, res_fork, res_pipe, estado, var, n_write, maxfd;
     int n_fifo, fd_canal, fd_cli, res_com, fd_med, fd_sinal;
@@ -172,7 +114,7 @@ int main(int argc, char* argv[], char* envp[]) {
 
     struct timeval tempo;
     fd_set fds;
-    pthread_t tid[3];  //Thread
+    pthread_t tid[2];  //Thread
     balcao b;   //Estrutura balcao
     b.ite_cli = 0; b.ite_med = 0;//"iteradores" dos arrays
     pedido p;   //Estrutura Pedido - enviada/recebida através dos FIFOS
@@ -285,17 +227,11 @@ int main(int argc, char* argv[], char* envp[]) {
     b.trinco = &trinco;
     pthread_create(&tid[0], NULL, mostraListas, (void* ) &b);
 
-    //THREAD 2
-    b.continua = 1; //Permitir Ligar a consulta
-    b.tempo = 20;
-    b.trinco = &trinco;
-    pthread_create(&tid[1], NULL, liga, (void* ) &b);
-
     //THREAD 3
- /*   b.continua = 1; //Permitir apagar o medico
+    b.continua = 1; //Permitir apagar o medico
     b.tempo = 20;
     b.trinco = &trinco;
-    pthread_create(&tid[0], NULL, apagaMed, (void* ) &b);*/
+    pthread_create(&tid[1], NULL, apagaMed, (void* ) &b);
 
     do {
         FD_ZERO(&fds);
@@ -330,9 +266,28 @@ int main(int argc, char* argv[], char* envp[]) {
 
                 if (n_fifo == sizeof(pedido)) {
                     if (p.cli_med == 0) {
+                        int cli_existe = 0;
+
                         pthread_mutex_lock(&trinco);
-                        if (b.ite_cli <= b.maxclientes - 1) {
-                            printf("\nE cliente");
+
+                        for (int j = 0; j < b.ite_cli; ++j) {
+                            if(b.p_cli[j].pid_cli == p.pid_cli){
+                                cli_existe = 1;
+                                break;
+                            }
+                        }
+
+                        int i_cli = b.ite_cli;
+                        int max_cli = b.maxclientes;
+                        pthread_mutex_unlock(&trinco);
+
+
+                        if(cli_existe == 1){
+                            cli_existe = 0;
+                            continue;
+                        }
+
+                        if (i_cli <= max_cli - 1) {
                             //escreve para o classificador
                             n_write = write(canal[1], p.sintomas, strlen(p.sintomas));
                             if (n_write == -1) {
@@ -347,6 +302,7 @@ int main(int argc, char* argv[], char* envp[]) {
                             }
 
                             p.classificacao[res] = '\0';
+                            p.cli_med = 0;//porque é cliente
 
                             sprintf(str_cli, FIFO_CLI, p.pid_cli);
                             fd_cli = open(str_cli, O_WRONLY);
@@ -365,10 +321,49 @@ int main(int argc, char* argv[], char* envp[]) {
                             strcpy(p.classificacao, aux_str);
                             p.prio = atoi(ptr);
 
-                            b.p_cli[b.ite_cli] = p;
+                            //------------CICLO LIGAÇÃO AO MÉDICO (É UM CLIENTE)---------------
+
+                            int lig_c = 0;
+
+                            pthread_mutex_lock(&trinco);
+
+                            for (int j = 0; j < b.ite_med; ++j) {
+                                if(strcmp(b.p_med[j].especialidade, p.classificacao) == 0 && b.p_med[j].com == 0){
+                                    lig_c = 1;
+                                    b.p_med[j].com = 1;
+                                    p.pid_med = b.p_med[j].pid_med;
+                                    p.com = 1;
+                                    printf("\nEncontrou um medico (%d) para o atender", b.p_med[j].pid_med);
+                                }else{
+                                    p.com = 0;
+                                    printf("\nNao encontrou nenhum cliente");
+                                }
+                            }
+
+                            p.cli_med = 0;
+                            b.p_cli[b.ite_cli] = p;//copia para o array dos clientes
                             ++b.ite_cli;
+
+                            pthread_mutex_unlock(&trinco);
+
+                            if(lig_c == 1){
+                                printf("\nVai ligar");
+                                p.cli_med = 0;//para simular que foi o medico que ligou
+                                sprintf(str_med, FIFO_MED, p.pid_med);
+                                fd_med = open(str_med, O_WRONLY);
+                                n_write = write(fd_med, &p, sizeof(pedido));
+                                if (n_write == -1) {
+                                    printf("\nNão conseguiu escrever...");
+                                    exit(1);
+                                }
+                                close(fd_med);
+                            }
+
+                            //------------FIM CICLO LIGAÇÃO AO MÉDICO (É UM CLIENTE)---------------
+
                         } else {
                             strcpy(p.classificacao, "O balcao nao consegue atender mais clientes...\n");
+                            p.cli_med = 0;
                             sprintf(str_cli, FIFO_CLI, p.pid_cli);
                             fd_cli = open(str_cli, O_WRONLY);
                             n_write = write(fd_cli, &p, sizeof(pedido));
@@ -379,14 +374,32 @@ int main(int argc, char* argv[], char* envp[]) {
                             close(fd_cli);
                             continue;
                         }
-                        pthread_mutex_unlock(&trinco);
                     } else {
-                        pthread_mutex_lock(&trinco);//bloqueia o mutex, vai aceder à informação
-                        if (b.ite_med <= b.maxmedicos - 1) {
-                            printf("\nE medico %d", b.ite_med);
+                        int med_existe = 0;
+
+                        pthread_mutex_lock(&trinco);
+
+                        for (int j = 0; j < b.ite_cli; ++j) {
+                            if(b.p_med[j].pid_med == p.pid_med){
+                                med_existe = 1;
+                                break;
+                            }
+                        }
+
+                        int i_med = b.ite_med;
+                        int max_med = b.maxmedicos;
+
+                        pthread_mutex_unlock(&trinco);
+
+                        if(med_existe == 1){
+                            med_existe = 0;
+                            continue;
+                        }
+
+                        if (i_med<= max_med - 1) {
                             strcpy(p.msg, "esta ligado ao balcao!");
-                            sprintf(str_med, FIFO_MED, p.pid_med);
                             p.cli_med = 1;
+                            sprintf(str_med, FIFO_MED, p.pid_med);
                             fd_med = open(str_med, O_WRONLY);
                             n_write = write(fd_med, &p, sizeof(pedido));
                             if (n_write == -1) {
@@ -394,9 +407,48 @@ int main(int argc, char* argv[], char* envp[]) {
                                 exit(1);
                             }
                             close(fd_med);
-                            b.p_med[b.ite_med] = p;
+
+
+                            //------------CICLO LIGAÇÃO AO CLIENTE (É UM MÉDICO)--------------
+
+                            int lig_m = 0;
+
+                            pthread_mutex_lock(&trinco);
+
+                            for (int j = 0; j < b.ite_cli; ++j) {
+                                if(strcmp(b.p_cli[j].classificacao, p.especialidade) == 0 && b.p_cli[j].com == 0){
+                                    lig_m = 1;
+                                    b.p_cli[j].com = 1;
+                                    p.pid_cli = b.p_cli[j].pid_cli;
+                                    p.com = 1;
+                                    printf("\nEncontrou um medico (%d) para o atender", b.p_med[j].pid_med);
+                                }else{
+                                    p.com = 0;
+                                    printf("\nNao encontrou nenhum cliente");
+                                }
+                            }
+
+                            p.cli_med = 1;
+                            b.p_med[b.ite_med] = p;//copia para o array dos clientes
                             ++b.ite_med;
-                            printf("\n[PID %d] ESP: %s ITE:%d", b.p_med[b.ite_med-1].pid_med, b.p_med[b.ite_med-1].especialidade, b.ite_med);
+
+                            pthread_mutex_unlock(&trinco);
+
+                            if(lig_m == 1){
+                                printf("\nVai ligar");
+                                p.cli_med = 1;//para simular que foi o medico que ligou
+                                sprintf(str_cli, FIFO_CLI, p.pid_cli);
+                                fd_cli = open(str_cli, O_WRONLY);
+                                n_write = write(fd_cli, &p, sizeof(pedido));
+                                if (n_write == -1) {
+                                    printf("\nNão conseguiu escrever (ligacao para o cliente)...");
+                                    exit(1);
+                                }
+                                close(fd_cli);
+                            }
+
+                            //------------FIM CICLO LIGAÇÃO AO CLIENTE (É UM MÉDICO)--------------
+
                         } else {
                             strcpy(p.msg, "O balcao nao tem capacidade para mais medicos...");
                             sprintf(str_med, FIFO_MED, p.pid_med);

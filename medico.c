@@ -33,6 +33,7 @@ int main(int argc, char* argv[]) {
     struct timeval tempo;
     fd_set fds;
     medico m;
+    pedido p;
     pthread_t tid;
 
 
@@ -124,6 +125,7 @@ int main(int argc, char* argv[]) {
 
                 pthread_mutex_lock(&trinco);
                 strcpy(m.m.msg, str_com);
+                pthread_mutex_unlock(&trinco);
 
                 if(estado == 1){
                     fd = open(FIFO_SERV, O_WRONLY);
@@ -132,44 +134,58 @@ int main(int argc, char* argv[]) {
                         exit(1);
                     }
 
+
+                    pthread_mutex_lock(&trinco);
                     m.m.cli_med = 1;
-                    write(fd, &m.m, sizeof(pedido));
+                    p = m.m;
+                    pthread_mutex_lock(&trinco),
+                            write(fd, &p, sizeof(pedido));
                     close(fd);
                 }else{
+                    pthread_mutex_lock(&trinco);
                     sprintf(str_lig_c, FIFO_CLI, m.m.pid_cli);
-
                     m.m.cli_med = 1;
+                    pthread_mutex_unlock(&trinco);
 
                     if(access(str_lig_c, F_OK) == 0){
+                        pthread_mutex_lock(&trinco);
+                        p = m.m;
+                        pthread_mutex_unlock(&trinco);
                         fd_lig_c = open(str_lig_c, O_WRONLY);
-                        write(fd_lig_c, &m.m, sizeof(pedido));
+                        write(fd_lig_c, &p, sizeof(pedido));
                         close(fd_lig_c);
                     }
                 }
-                pthread_mutex_unlock(&trinco);
             }
             if(FD_ISSET(fd_med, &fds)){
-                n = read(fd_med, &m.m, sizeof(pedido));
+                n = read(fd_med, &p, sizeof(pedido));
                 if (n == -1) {
                     printf("\nNao conseguiu ler...");
                     exit(1);
                 }
 
-                pthread_mutex_lock(&trinco);
-                if(m.m.cli_med == 0){
+
+                if(p.cli_med == 0){
                     estado = 2;
 
-                    printf("\n[PID_CLI: %d]Enviou: %s", m.m.pid_cli, m.m.msg);
+                    printf("\n[PID_CLI: %d]Enviou: %s", p.pid_cli, p.msg);
+
+                    pthread_mutex_lock(&trinco);
+                    m.m = p;
+                    pthread_mutex_unlock(&trinco);
+
                 }else{
                     estado = 1;
 
+                    pthread_mutex_lock(&trinco);
+
+                    m.m = p;
                     if (strcmp(m.m.msg, "o balcao fechou") == 0) {
                         printf("%s", m.m.msg);
                         strcpy(str_com, "sair\n");
                     }
+                    pthread_mutex_unlock(&trinco);
                 }
-
-                pthread_mutex_unlock(&trinco);
             }
         }
     }while(strcmp(str_com, "sair\n") != 0);
@@ -179,11 +195,14 @@ int main(int argc, char* argv[]) {
     close(fd_med);
     close(fd_lig_m);
 
+    pthread_mutex_lock(&trinco);
     m.m.sair = 1;
+    pthread_mutex_unlock(&trinco);
     pthread_join(tid, NULL);
 
     unlink(str);
     unlink(str_lig_m);
 
+    pthread_mutex_destroy(&trinco);
     exit(0);
 }

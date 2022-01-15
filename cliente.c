@@ -22,9 +22,6 @@ int main(int argc,char *argv[])
     }
 
 
-    setbuf(stdout, NULL);
-
-
     strcpy(nome, argv[1]);
 
 
@@ -80,7 +77,7 @@ int main(int argc,char *argv[])
 
     estado = 1;
 
-    printf("\nO seu diagnostico e: %s e tem prioridade: ", p.classificacao);
+    printf("\nO seu diagnostico e: %s e tem prioridade: %d", p.classificacao, p.prio);
     fflush(stdout);
 
 
@@ -147,10 +144,12 @@ int main(int argc,char *argv[])
                     exit(1);
                 }
 
+                printf("\nRecebeu alguma coisa... %d", p.pid_med);
+
                 if(p.cli_med == 1){
                     estado = 2;
 
-                    printf("\n[PID_MED: %d]Enviou: %s", p.pid_med, p.msg);
+                    printf("\n[PID_MED: %d]Enviou: %s\n", p.pid_med, p.msg);
                     if(strcmp(p.msg, "acabou\n") == 0){
                         estado = 1;
                         printf("\nA consulta acabou...\n");
