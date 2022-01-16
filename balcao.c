@@ -203,7 +203,6 @@ int main(int argc, char* argv[], char* envp[]) {
             if (FD_ISSET(0, &fds)) {
                 fgets(str_com, sizeof(str_com), stdin);
 
-
                 char *ptr, str1[20];
                 ptr = strtok(str_com, " ");
                 strcpy(str1, ptr);
@@ -217,9 +216,12 @@ int main(int argc, char* argv[], char* envp[]) {
                 if(strcmp(str1, "utentes\n") == 0){
                     pthread_mutex_lock(&trinco);
                     if(b.ite_cli == 0){
-                        printf("\nNao ha clientes");
+                        printf("\nNao ha clientes\n");
+                        pthread_mutex_unlock(&trinco);
                         continue;
+
                     }
+                    pthread_mutex_lock(&trinco);
                     for (int j = 0; j < b.ite_cli; ++j) {
                         printf("\nCliente %d:", i);
                         printf("\n\tPID: %d",b.p_cli[i].pid_cli);
@@ -231,7 +233,8 @@ int main(int argc, char* argv[], char* envp[]) {
                 if(strcmp(str1, "especialistas\n") == 0){
                     pthread_mutex_lock(&trinco);
                     if(b.ite_med == 0){
-                        printf("\nNao ha medicos");
+                        printf("\nNao ha medicos\n");
+                        pthread_mutex_unlock(&trinco);
                         continue;
                     }
                     for (int j = 0; j < b.ite_med; ++j) {
@@ -272,12 +275,12 @@ int main(int argc, char* argv[], char* envp[]) {
                         sprintf(str_cli, FIFO_CLI, p.pid_cli);
                         fd_cli = open(str_cli, O_WRONLY);
                         if(fd_cli == -1){
-                            printf("\nNao conseguiu abrir o  pipe do cliente...");
+                            printf("\nNao conseguiu abrir o  pipe do cliente...\n");
                             exit(1);
                         }
                         n_write = write(fd_cli, &p, sizeof(pedido));
                         if(n_write == -1){
-                            printf("\nNao conseguiu escrever para o cliente...");
+                            printf("\nNao conseguiu escrever para o cliente...\n");
                             exit(1);
                         }
                         close(fd_cli);
@@ -299,7 +302,7 @@ int main(int argc, char* argv[], char* envp[]) {
                             }
                             --b.ite_med;
                         }else{
-                            printf("\nO medico ou está em consulta ou então não existe");
+                            printf("\nO medico ou está em consulta ou então não existe\n");
                         }
                     }
 
@@ -310,12 +313,12 @@ int main(int argc, char* argv[], char* envp[]) {
                         sprintf(str_med, FIFO_MED, p.pid_med);
                         fd_med = open(str_med, O_WRONLY);
                         if(fd_cli == -1){
-                            printf("\nNao conseguiu abrir o  pipe do cliente...");
+                            printf("\nNao conseguiu abrir o  pipe do cliente...\n");
                             exit(1);
                         }
                         n_write = write(fd_med, &p, sizeof(pedido));
                         if(n_write == -1){
-                            printf("\nNao conseguiu escrever para o cliente...");
+                            printf("\nNao conseguiu escrever para o cliente...\n");
                             exit(1);
                         }
                         close(fd_cli);
@@ -327,14 +330,11 @@ int main(int argc, char* argv[], char* envp[]) {
                     pthread_mutex_lock(&trinco);
 
                     b.tempo = x;
-                    printf("\nMudou a frequencia para %d segundos", b.tempo);
+                    printf("\nMudou a frequencia para %d segundos\n", b.tempo);
 
                     pthread_mutex_unlock(&trinco);
 
                 }
-
-
-
                 }
             }
 
@@ -438,7 +438,7 @@ int main(int argc, char* argv[], char* envp[]) {
                                 fd_med = open(str_med, O_WRONLY);
                                 n_write = write(fd_med, &p, sizeof(pedido));
                                 if (n_write == -1) {
-                                    printf("\nNão conseguiu escrever...");
+                                    printf("\nNão conseguiu escrever...\n");
                                     exit(1);
                                 }
                                 close(fd_med);
@@ -453,7 +453,7 @@ int main(int argc, char* argv[], char* envp[]) {
                             fd_cli = open(str_cli, O_WRONLY);
                             n_write = write(fd_cli, &p, sizeof(pedido));
                             if (n_write == -1) {
-                                printf("\nNão conseguiu escrever...");
+                                printf("\nNão conseguiu escrever...\n");
                                 exit(1);
                             }
                             close(fd_cli);
@@ -483,13 +483,13 @@ int main(int argc, char* argv[], char* envp[]) {
                         }
 
                         if (i_med<= max_med - 1) {
-                            strcpy(p.msg, "esta ligado ao balcao!");
+                            strcpy(p.msg, "Esta ligado ao balcao!\n");
                             p.cli_med = 1;
                             sprintf(str_med, FIFO_MED, p.pid_med);
                             fd_med = open(str_med, O_WRONLY);
                             n_write = write(fd_med, &p, sizeof(pedido));
                             if (n_write == -1) {
-                                printf("\nNão conseguiu escrever...");
+                                printf("\nNão conseguiu escrever...\n");
                                 exit(1);
                             }
                             close(fd_med);
@@ -510,7 +510,7 @@ int main(int argc, char* argv[], char* envp[]) {
                                     printf("\nEncontrou um cliente (%d) que precisa de ser atendido", b.p_cli[j].pid_cli);
                                 }else{
                                     p.com = 0;
-                                    printf("\nNao encontrou nenhum cliente");
+                                    printf("\nNao encontrou nenhum cliente\n");
                                 }
                             }
 

@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
 
 
     if (argc < 3) {
-        printf("\nIndique o seu nome e a sua especialidade por parametro");
+        printf("\nIndique o seu nome e a sua especialidade por parametro\n");
         return 1;
     }
 
@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
     }
 
     m.m.pid_med = getpid();
-    printf("\n[PID:%d]Ola %s da especialidade %s\n", m.m.pid_med, argv[1], argv[2]);
+    printf("\n[PID:%d]Ola Doutor %s da especialidade %s\n", m.m.pid_med, argv[1], argv[2]);
 
 
     if (access("sinal", F_OK) != 0) {
@@ -90,12 +90,12 @@ int main(int argc, char* argv[]) {
 
     fd = open(str, O_RDONLY);
     if(fd == -1){
-        printf("\nNao abriu o FIFO do balcao");
+        printf("\nNao abriu o FIFO do balcao\n");
         exit(1);
     }
     n = read(fd, &m.m, sizeof(pedido));
     if(n == -1){
-        printf("\nNao conseguiu ler");
+        printf("\nNao conseguiu ler\n");
         exit(1);
     }
     close(fd);
@@ -106,7 +106,7 @@ int main(int argc, char* argv[]) {
 
     fd_med = open(str, O_RDWR | O_NONBLOCK);
     if(fd_med == -1){
-        perror("\nImpossivel abrir o FIFO do medico");
+        perror("\nImpossivel abrir o FIFO do medico\n");
         exit(1);
     }
 
@@ -129,7 +129,7 @@ int main(int argc, char* argv[]) {
                 fgets(str_com, sizeof(str_com), stdin);
 
                 if(strcmp(str_com, "sair\n") == 0){
-                    printf("\nVai terminar o programa...");
+                    printf("\nVai terminar o programa...\n");
                     break;
                 }
 
@@ -140,7 +140,7 @@ int main(int argc, char* argv[]) {
                 if(estado == 1){
                     fd = open(FIFO_SERV, O_WRONLY);
                     if(fd == -1){
-                        printf("\nNao conseguiu abrir o FIFo do balcao...");
+                        printf("\nNao conseguiu abrir o FIFo do balcao...\n");
                         exit(1);
                     }
 
@@ -208,7 +208,7 @@ int main(int argc, char* argv[]) {
                     pthread_mutex_lock(&trinco);
 
                     m.m = p;
-                    if (strcmp(m.m.msg, "o balcao fechou") == 0 || m.m.sair == 1) {
+                    if (strcmp(m.m.msg, "O balcao fechou") == 0 || m.m.sair == 1) {
                         printf("%s", m.m.msg);
                         strcpy(str_com, "sair\n");
                     }

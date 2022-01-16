@@ -17,7 +17,7 @@ int main(int argc,char *argv[])
 
     if(argc < 2)
     {
-        printf("\n<ERRO> Indique o seu nome como parametro");
+        printf("\n<ERRO> Indique o seu nome como parametro\n");
         return 1;
     }
 
@@ -37,7 +37,7 @@ int main(int argc,char *argv[])
     mkfifo(str, 0600);
 
 
-    printf("\n[PID=%d]Bom dia %s",p.pid_cli, nome);
+    printf("\n[PID=%d]Bom dia Cliente %s",p.pid_cli, nome);
 
     p.cli_med = 0;
     p.pid_med = 0;
@@ -50,12 +50,12 @@ int main(int argc,char *argv[])
 
     fd = open(FIFO_SERV, O_WRONLY);
     if(fd == -1){
-        printf("\nNao conseguiu abrir o FIFo do balcao...");
+        printf("\nNao conseguiu abrir o FIFo do balcao...\n");
         exit(1);
     }
     n = write(fd, &p, sizeof(pedido));
     if(n == -1){
-        printf("\nNao conseguiu escrever para o balcao...");
+        printf("\nNao conseguiu escrever para o balcao...\n");
         exit(1);
     }
     close(fd);
@@ -64,7 +64,7 @@ int main(int argc,char *argv[])
     fd_cli = open(str, O_RDONLY);
     n = read(fd_cli, &p, sizeof(pedido));
     if(n == -1){
-        printf("\nNao conseguiu ler do balcao...");
+        printf("\nNao conseguiu ler do balcao...\n");
         exit(1);
     }
     close(fd_cli);
@@ -83,7 +83,7 @@ int main(int argc,char *argv[])
 
     fd_cli = open(str, O_RDWR | O_NONBLOCK);
     if(fd_cli == -1){
-        printf("\nNao conseguiu abrir o FIFO do cliente...");
+        printf("\nNao conseguiu abrir o FIFO do cliente...\n");
         exit(1);
     }
 
