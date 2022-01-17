@@ -15,7 +15,6 @@ typedef struct{
     int ite_cli , ite_med;//"iteradores"
     pthread_mutex_t *trinco; //mutex
     int tempo; //Tempo para mostrar a lista
-
 }balcao;
 
 

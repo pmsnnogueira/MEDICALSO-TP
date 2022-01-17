@@ -497,20 +497,36 @@ int main(int argc, char* argv[], char* envp[]) {
 
                             //------------CICLO LIGAÇÃO AO CLIENTE (É UM MÉDICO)--------------
 
-                            int lig_m = 0;
+                            int lig_m = 0, z, y, flag_z = 0;
+                            p.com = 0;
 
                             pthread_mutex_lock(&trinco);
 
-                            for (int j = 0; j < b.ite_cli; ++j) {
-                                if(strcmp(b.p_cli[j].classificacao, p.especialidade) == 0 && b.p_cli[j].com == 0){
-                                    lig_m = 1;
-                                    b.p_cli[j].com = 1;
-                                    p.pid_cli = b.p_cli[j].pid_cli;
-                                    p.com = 1;
-                                    printf("\nEncontrou um cliente (%d) que precisa de ser atendido", b.p_cli[j].pid_cli);
-                                }else{
-                                    p.com = 0;
-                                    printf("\nNao encontrou nenhum cliente\n");
+                            for (z = 0; z < b.ite_cli; ++z) {
+                                if(strcmp(b.p_cli[z].classificacao, p.especialidade) == 0 && b.p_cli[z].com == 0) {
+                                    for (y = 0; y < b.ite_cli; ++y) {
+                                        if (strcmp(b.p_cli[z].classificacao, b.p_cli[y].classificacao) == 0 &&
+                                            b.p_cli[z].prio > b.p_cli[y].prio) {
+                                            if (b.p_cli[y].com == 0) {
+                                                flag_z = 1;
+                                                lig_m = 1;
+                                                b.p_cli[y].com = 1;
+                                                p.pid_cli = b.p_cli[y].pid_cli;
+                                                p.com = 1;
+                                                printf("\nEncontrou um cliente (%d) que precisa de ser atendido", b.p_cli[y].pid_cli);
+                                                break;
+                                            }else{
+                                                flag_z = 1;
+                                                lig_m = 1;
+                                                b.p_cli[z].com = 1;
+                                                p.pid_cli = b.p_cli[z].pid_cli;
+                                                p.com = 1;
+                                                printf("\nEncontrou um cliente (%d) que precisa de ser atendido", b.p_cli[z].pid_cli);
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if(flag_z == 1) break;
                                 }
                             }
 

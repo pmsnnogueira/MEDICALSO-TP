@@ -42,9 +42,9 @@
     <property name="node.js.selected.package.tslint" value="(autodetect)" />
   </component>
   <component name="RunManager">
-    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
       </method>
     </configuration>
     <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
@@ -78,7 +78,12 @@
       <workItem from="1642187205972" duration="401000" />
       <workItem from="1642210953241" duration="5202000" />
       <workItem from="1642256009601" duration="4583000" />
-      <workItem from="1642281577592" duration="6212000" />
+      <workItem from="1642281577592" duration="6422000" />
+      <workItem from="1642289945890" duration="3276000" />
+      <workItem from="1642352728021" duration="2284000" />
+      <workItem from="1642358190276" duration="333000" />
+      <workItem from="1642375462622" duration="540000" />
+      <workItem from="1642378442398" duration="2901000" />
     </task>
     <servers />
   </component>
