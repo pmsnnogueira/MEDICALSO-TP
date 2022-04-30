@@ -1,2 +1,2 @@
-# SO---TP
+# MEDICAL - TPSO
 Trabalho Prático de SO
